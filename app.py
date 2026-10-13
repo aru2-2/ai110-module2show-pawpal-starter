@@ -9,6 +9,25 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
 
 
+TYPE_EMOJI = {
+    "exercise": "🦮", "feeding": "🍖", "meds": "💊", "health": "🩺",
+    "grooming": "🛁", "enrichment": "🎾", "general": "🐾",
+}
+PRIORITY_EMOJI = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}
+
+
+def task_label(task):
+    return f"{TYPE_EMOJI.get(task.category, TYPE_EMOJI['general'])} {task.title}"
+
+
+def priority_label(task):
+    return f"{PRIORITY_EMOJI[task.priority.name]} {task.priority.name.lower()}"
+
+
+def status_label(task):
+    return "✅ completed" if task.completed else "⏳ pending"
+
+
 def show_conflicts(warnings):
     """Show all conflicts in one warning: what clashes, then how to fix it."""
     count = len(warnings)
@@ -85,13 +104,20 @@ if not owner.pets:
     st.info("Add a pet before adding tasks.")
 else:
     task_pet_name = st.selectbox("Pet for this task", [p.name for p in owner.pets])
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         task_title = st.text_input("Task title", value="Morning walk")
     with col2:
-        duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+        category = st.selectbox(
+            "Type", list(TYPE_EMOJI), format_func=lambda c: f"{TYPE_EMOJI[c]} {c}"
+        )
     with col3:
-        priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+        duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+    with col4:
+        priority = st.selectbox(
+            "Priority", ["low", "medium", "high"], index=2,
+            format_func=lambda p: f"{PRIORITY_EMOJI[p.upper()]} {p}",
+        )
     fixed_time = st.checkbox("Fix this task at a specific time")
     start_at = st.time_input("Start time", value=time(8, 0), disabled=not fixed_time)
 
@@ -99,7 +125,7 @@ if owner.pets and st.button("Add task"):
     pet = next(p for p in owner.pets if p.name == task_pet_name)
     new_task = Task(
         title=task_title,
-        category="general",
+        category=category,
         duration_minutes=int(duration),
         priority=Priority[priority.upper()],
         scheduled_time=start_at if fixed_time else None,
@@ -122,7 +148,7 @@ if all_tasks:
             to_complete = st.selectbox(
                 "Mark a task complete",
                 pending,
-                format_func=lambda t: f"{t.pet.name}: {t.title}",
+                format_func=lambda t: f"{t.pet.name}: {task_label(t)}",
             )
         with ccol2:
             if st.button("Mark complete"):
@@ -152,10 +178,10 @@ if all_tasks:
                 "pet": t.pet.name,
                 "due": f"{t.due_date:%b %d}" if t.due_date else "any day",
                 "time": f"{t.scheduled_time:%H:%M}" if t.scheduled_time else "flexible",
-                "title": t.title,
+                "title": task_label(t),
                 "duration_minutes": t.duration_minutes,
-                "priority": t.priority.name.lower(),
-                "status": "completed" if t.completed else "pending",
+                "priority": priority_label(t),
+                "status": status_label(t),
             }
             for t in scheduler.sort_by_time(shown_tasks)
         ]
@@ -188,9 +214,9 @@ if st.button("Generate schedule"):
                 {
                     "time": f"{i.start_time:%H:%M}-{i.end_minutes // 60:02d}:{i.end_minutes % 60:02d}",
                     "pet": i.task.pet.name if i.task.pet else "?",
-                    "task": i.task.title,
+                    "task": task_label(i.task),
                     "minutes": i.task.duration_minutes,
-                    "priority": i.task.priority.name.lower(),
+                    "priority": priority_label(i.task),
                     "why": i.reason,
                 }
                 for i in plan
@@ -199,6 +225,6 @@ if st.button("Generate schedule"):
     if scheduler.skipped:
         st.warning(
             "Not enough time today for: "
-            + ", ".join(f"{t.title} ({t.pet.name if t.pet else '?'})" for t in scheduler.skipped)
+            + ", ".join(f"{task_label(t)} ({t.pet.name if t.pet else '?'})" for t in scheduler.skipped)
             + ". Raise the daily minutes or lower another task's priority."
         )

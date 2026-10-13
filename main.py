@@ -1,14 +1,68 @@
+import os
+import sys
 from datetime import date, time
 
 from pawpal_system import Owner, Pet, Priority, ScheduledItem, Scheduler, Task
 from typing import List
 
+from tabulate import tabulate
+
+try:
+    import colorama
+except ImportError:  # colour on Windows is optional
+    colorama = None
+
+
+TYPE_EMOJI = {
+    "exercise": "🦮",
+    "feeding": "🍖",
+    "meds": "💊",
+    "health": "🩺",
+    "grooming": "🛁",
+    "enrichment": "🎾",
+    "general": "🐾",
+}
+ESC = chr(27)
+RED, GREEN, YELLOW = (f"{ESC}[{c}m" for c in (91, 92, 93))
+RESET = f"{ESC}[0m"
+PRIORITY_STYLE = {
+    Priority.HIGH: ("🔴", RED),
+    Priority.MEDIUM: ("🟡", YELLOW),
+    Priority.LOW: ("🟢", GREEN),
+}
+
+if colorama:
+    colorama.just_fix_windows_console()
+# Only emit colour codes on a real terminal so piped output and tests stay plain text.
+USE_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def paint(text: str, code: str) -> str:
+    return f"{code}{text}{RESET}" if USE_COLOR else text
+
+
+def task_icon(task: Task) -> str:
+    return TYPE_EMOJI.get(task.category, TYPE_EMOJI["general"])
+
+
+def priority_label(priority: Priority) -> str:
+    emoji, code = PRIORITY_STYLE[priority]
+    return f"{emoji} {paint(priority.name, code)}"
+
+
+def status_label(task: Task) -> str:
+    return paint("✅ done", GREEN) if task.completed else paint("⏳ pending", YELLOW)
+
+
+def table(rows, headers) -> str:
+    return tabulate(rows, headers=headers, tablefmt="rounded_grid")
+
 
 def format_schedule(owner: Owner, scheduler: Scheduler, plan: List[ScheduledItem], on_date: date) -> str:
     used = sum(i.task.duration_minutes for i in plan)
     lines = [
-        f"Today's Schedule for {owner.name} - {on_date:%A, %B %d}",
-        f"Budget: {used} of {owner.available_minutes_per_day} min used",
+        f"🐾 Today's Schedule for {owner.name} - {on_date:%A, %B %d}",
+        f"⏱️  Budget: {used} of {owner.available_minutes_per_day} min used",
         "",
     ]
 
@@ -17,47 +71,48 @@ def format_schedule(owner: Owner, scheduler: Scheduler, plan: List[ScheduledItem
         # Plain arithmetic, not time(), so a task ending at or past midnight can't raise.
         end_min = item.end_minutes
         pet = item.task.pet.name if item.task.pet else "?"
-        fixed = "*" if item.task.scheduled_time is not None else ""
+        fixed = "📌" if item.task.scheduled_time is not None else ""
         rows.append((
             f"{item.start_time:%H:%M}-{end_min // 60:02d}:{end_min % 60:02d}",
             pet,
-            item.task.title,
-            item.task.priority.name,
+            f"{task_icon(item.task)} {item.task.title}",
+            priority_label(item.task.priority),
             fixed,
         ))
 
-    headers = ("TIME", "PET", "TASK", "PRIORITY", "")
-    widths = [max(len(str(r[c])) for r in [headers] + rows) for c in range(4)]
-    fmt = "  ".join(f"{{:<{w}}}" for w in widths) + "  {}"
-    lines.append(fmt.format(*headers).rstrip())
-    lines.extend(fmt.format(*r).rstrip() for r in rows)
-    lines.append("")
-    lines.append("* = fixed time")
+    lines.append(table(rows, ("Time", "Pet", "Task", "Priority", "Fixed")))
+    lines.append("📌 = fixed time")
 
     if scheduler.skipped:
         lines.append("")
-        lines.append("Skipped (not enough time):")
-        lines.extend(f"  - {t.title} ({t.pet.name if t.pet else '?'}, {t.duration_minutes} min)"
+        lines.append(paint("⏭️  Skipped (not enough time):", YELLOW))
+        lines.extend(f"  - {task_icon(t)} {t.title} ({t.pet.name if t.pet else '?'}, {t.duration_minutes} min)"
                      for t in scheduler.skipped)
 
     warnings = scheduler.conflict_warnings(plan)
     if warnings:
         lines.append("")
-        lines.extend(warnings)
+        lines.extend(paint(f"⚠️  {w}", RED) for w in warnings)
 
     return "\n".join(lines)
 
 
 def print_tasks(heading: str, tasks: List[Task]) -> None:
-    print(f"== {heading} ==")
+    print(f"📋 {heading}")
     if not tasks:
-        print("  (none)")
+        print("  (none)\n")
+        return
+    rows = []
     for t in tasks:
-        when = f"{t.scheduled_time:%H:%M}" if t.scheduled_time else "flexible"
-        status = "done" if t.completed else "pending"
-        pet = t.pet.name if t.pet else "?"
-        due = f"{t.due_date:%b %d}" if t.due_date else "any day"
-        print(f"  {due:<7}  {when:<8}  {pet:<8}  {t.title:<14}  {t.recurrence or '-':<7}  {status}")
+        rows.append((
+            f"{t.due_date:%b %d}" if t.due_date else "any day",
+            f"{t.scheduled_time:%H:%M}" if t.scheduled_time else "flexible",
+            t.pet.name if t.pet else "?",
+            f"{task_icon(t)} {t.title}",
+            f"🔁 {t.recurrence}" if t.recurrence else "-",
+            status_label(t),
+        ))
+    print(table(rows, ("Due", "When", "Pet", "Task", "Repeats", "Status")))
     print()
 
 
@@ -88,7 +143,7 @@ def main() -> None:
     # --- Conflict detection demo -------------------------------------------------
     # "Evening walk" (Biscuit) already runs 18:00-18:25. Adding each task below should
     # warn if it overlaps, and must never stop the program.
-    print("== Adding fixed-time tasks (checking for conflicts) ==")
+    print("🔍 Adding fixed-time tasks (checking for conflicts)")
     clashes = [
         # (pet, task, should it warn?)
         (biscuit, Task("Dinner", "feeding", 10, Priority.HIGH, scheduled_time=time(18, 0)), True),   # same time, same pet
@@ -102,7 +157,8 @@ def main() -> None:
         print(f"Added '{task.title}' for {pet.name} at {task.scheduled_time:%H:%M}:")
         for warning in warnings or ["(no conflict)"]:
             print(f"  {warning}")
-        verdict = "OK" if bool(warnings) == should_warn else "UNEXPECTED"
+        ok = bool(warnings) == should_warn
+        verdict = paint("✅ OK", GREEN) if ok else paint("❌ UNEXPECTED", RED)
         print(f"  [{verdict}] expected {'a warning' if should_warn else 'no warning'}")
     print()
 

@@ -91,16 +91,44 @@ python -m pytest        # run the tests
 Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
 
 ```
-Today's Schedule for Jordan - Monday, October 12
-Budget: 110 of 120 min used
+🐾 Today's Schedule for Jordan - Tuesday, October 13
+⏱️  Budget: 90 of 120 min used
 
-TIME         PET      TASK          PRIORITY
-08:00-08:30  Biscuit  Morning walk  HIGH      *
-08:30-08:50  Mia      Play session  MEDIUM
-09:00-09:10  Mia      Feeding       HIGH      *
-09:10-09:55  Biscuit  Grooming      LOW
-12:30-12:35  Mia      Medication    HIGH      *
+╭─────────────┬─────────┬─────────────────┬────────────┬─────────╮
+│ Time        │ Pet     │ Task            │ Priority   │ Fixed   │
+├─────────────┼─────────┼─────────────────┼────────────┼─────────┤
+│ 08:00-08:20 │ Mia     │ 🎾 Play session │ 🟡 MEDIUM  │         │
+│ 18:00-18:25 │ Biscuit │ 🦮 Evening walk │ 🟡 MEDIUM  │ 📌      │
+╰─────────────┴─────────┴─────────────────┴────────────┴─────────╯
+📌 = fixed time
 ```
+
+## 🎨 Output Formatting
+
+Both the CLI demo (`main.py`) and the Streamlit app (`app.py`) use the same visual conventions.
+
+| Feature | Symbols |
+| --- | --- |
+| Task type emoji | 🦮 exercise, 🍖 feeding, 💊 meds, 🩺 health, 🛁 grooming, 🎾 enrichment, 🐾 general |
+| Priority | 🔴 HIGH, 🟡 MEDIUM, 🟢 LOW (CLI also colors the label) |
+| Status | ✅ done, ⏳ pending |
+| Other markers | 📌 fixed-time task, 🔁 recurring, ⏭️ skipped, ⚠️ conflict warning |
+
+### CLI (`main.py`)
+
+- **`tabulate`**: `table()` wraps `tabulate(..., tablefmt="rounded_grid")` and renders the schedule and every task list as boxed tables.
+- **ANSI colors**: `paint()` wraps text in escape codes (`RED`, `GREEN`, `YELLOW`) for priority labels, status, skipped-task notices, conflict warnings, and the OK/UNEXPECTED checks in the conflict demo. Colors are only emitted when stdout is a terminal and `NO_COLOR` is unset, so piped output and tests stay plain text.
+- **`colorama`**: `colorama.just_fix_windows_console()` enables ANSI colors on older Windows consoles. It is optional; `main.py` falls back gracefully if it is missing.
+- **`wcwidth`**: lets `tabulate` measure double-width emoji correctly so table columns stay aligned.
+- **Helpers**: `task_icon()`, `priority_label()` and `status_label()` build the emoji/colored cells; `format_schedule()` and `print_tasks()` use them.
+
+### Streamlit app (`app.py`)
+
+- Tasks now have a **Type** dropdown (previously always `"general"`), saved in `Task.category`.
+- `task_label()`, `priority_label()` and `status_label()` add emojis to the task list, generated schedule, "Mark complete" dropdown and skipped-tasks warning.
+- `st.table` cannot color text, so the app uses emojis rather than colors for priority and status.
+
+Install the extra libraries with `pip install -r requirements.txt` (adds `tabulate`, `colorama`, `wcwidth`).
 
 ## 🧪 Testing PawPal+
 
