@@ -42,16 +42,49 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## 🛠️ Implementation Summary
+
+The core logic lives in `pawpal_system.py`. `main.py` is a command-line demo that builds an owner with two pets and prints a formatted schedule. `tests/test_pawpal.py` holds the first tests. The design is in `diagrams/uml_draft.mmd`.
+
+**Classes**
+
+- **`Task`** (dataclass): one care activity with a title, category, duration, `Priority`, optional fixed time, optional recurrence (`daily` or `weekly`) and completion status. `mark_complete()` records the date, and `is_due(date)` decides whether the task applies on a given day.
+- **`Pet`** (dataclass): pet details plus a list of tasks. `add_task()` also sets `task.pet`, so every task knows which pet it belongs to.
+- **`Owner`** (dataclass): holds the pets and the daily time budget. `get_all_tasks()` returns every pet's tasks in one list.
+- **`ScheduledItem`** (dataclass): one entry in the plan, made of a task, a start time and the reason it was placed there. It can check whether it overlaps another item.
+- **`Priority`**: an `IntEnum` (`LOW`, `MEDIUM`, `HIGH`) so priorities sort correctly.
+- **`Scheduler`**: the planner. It reads tasks through `Owner.get_all_tasks()`, so one plan covers all pets.
+
+**How they work together**
+
+1. `Owner` holds many `Pet`s, and each `Pet` holds many `Task`s.
+2. `Scheduler.generate_plan(date)` collects all tasks through the owner and keeps the ones that are due that day.
+3. It sorts them by priority, then fixed time, then shortest first.
+4. It trims the list to fit the owner's daily minutes. A task that no longer fits is skipped, and smaller ones can still fit.
+5. Tasks with a fixed time are placed first. The rest take the earliest open gap between 08:00 and 21:00.
+6. The result is a time-ordered list of `ScheduledItem`s. `detect_conflicts()` flags overlapping items, and `explain_plan()` describes the plan along with conflicts and skipped tasks.
+
+**Run it**
+
+```bash
+python main.py          # print a sample schedule
+python -m pytest        # run the tests
+```
+
 ## 🖥️ Sample Output
 
 Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+Today's Schedule for Jordan - Monday, October 12
+Budget: 110 of 120 min used
+
+TIME         PET      TASK          PRIORITY
+08:00-08:30  Biscuit  Morning walk  HIGH      *
+08:30-08:50  Mia      Play session  MEDIUM
+09:00-09:10  Mia      Feeding       HIGH      *
+09:10-09:55  Biscuit  Grooming      LOW
+12:30-12:35  Mia      Medication    HIGH      *
 ```
 
 ## 🧪 Testing PawPal+
