@@ -1,6 +1,13 @@
 from dataclasses import dataclass, field
 from datetime import date, time
+from enum import IntEnum
 from typing import Dict, List, Optional
+
+
+class Priority(IntEnum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
 
 
 @dataclass
@@ -8,10 +15,12 @@ class Task:
     title: str
     category: str
     duration_minutes: int
-    priority: str = "medium"
+    priority: Priority = Priority.MEDIUM
     scheduled_time: Optional[time] = None
     recurrence: Optional[str] = None
     completed: bool = False
+    # Back-reference to the owning Pet; excluded from repr/eq to avoid infinite recursion.
+    pet: Optional["Pet"] = field(default=None, repr=False, compare=False)
 
     def mark_complete(self) -> None:
         pass
@@ -56,11 +65,25 @@ class Owner:
         pass
 
 
+@dataclass
+class ScheduledItem:
+    task: Task
+    start_time: time
+    reason: str = ""
+
+    @property
+    def end_minutes(self) -> int:
+        pass
+
+    def overlaps(self, other: "ScheduledItem") -> bool:
+        pass
+
+
 class Scheduler:
     def __init__(self, owner: Owner) -> None:
         self.owner = owner
 
-    def generate_plan(self, on_date: date) -> List[Task]:
+    def generate_plan(self, on_date: date) -> List[ScheduledItem]:
         pass
 
     def sort_tasks(self, tasks: List[Task]) -> List[Task]:
@@ -69,8 +92,8 @@ class Scheduler:
     def filter_by_time(self, tasks: List[Task]) -> List[Task]:
         pass
 
-    def detect_conflicts(self, tasks: List[Task]) -> List[Task]:
+    def detect_conflicts(self, plan: List[ScheduledItem]) -> List[ScheduledItem]:
         pass
 
-    def explain_plan(self) -> str:
+    def explain_plan(self, plan: List[ScheduledItem]) -> str:
         pass

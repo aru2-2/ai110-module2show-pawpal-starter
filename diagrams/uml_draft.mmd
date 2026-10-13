@@ -1,4 +1,11 @@
 classDiagram
+    class Priority {
+        <<enumeration>>
+        LOW = 1
+        MEDIUM = 2
+        HIGH = 3
+    }
+
     class Owner {
         +str name
         +int available_minutes_per_day
@@ -25,24 +32,36 @@ classDiagram
         +str title
         +str category
         +int duration_minutes
-        +str priority
+        +Priority priority
         +time scheduled_time
         +str recurrence
         +bool completed
+        +Pet pet
         +mark_complete() void
         +is_due(date) bool
     }
 
+    class ScheduledItem {
+        +Task task
+        +time start_time
+        +str reason
+        +end_minutes() int
+        +overlaps(other) bool
+    }
+
     class Scheduler {
         +Owner owner
-        +generate_plan(date) List~Task~
+        +generate_plan(date) List~ScheduledItem~
         +sort_tasks(tasks) List~Task~
         +filter_by_time(tasks) List~Task~
-        +detect_conflicts(tasks) List~Task~
-        +explain_plan() str
+        +detect_conflicts(plan) List~ScheduledItem~
+        +explain_plan(plan) str
     }
 
     Owner "1" --> "1..*" Pet : owns
     Pet "1" --> "0..*" Task : has
+    Task "0..*" --> "1" Pet : belongs to
+    Task --> Priority : has
+    ScheduledItem --> Task : wraps
     Scheduler --> Owner : uses constraints from
-    Scheduler ..> Task : schedules
+    Scheduler ..> ScheduledItem : produces
