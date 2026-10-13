@@ -7,6 +7,10 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+Three core actions a user should be able to perform is adding their pet, scheduling a walk, and viewing today's tasks.
+
+The main objects for the system are Owner, Pet, Task, and Scheduler. Owner has Pets. Owner can schedule Tasks for Pets. The Scheduler considers constraints provided by the Owner and plans Tasks based on their priority, with an explanation of why each task was chosen.
+
 **b. Design changes**
 
 - Did your design change during implementation?
