@@ -89,19 +89,37 @@ TIME         PET      TASK          PRIORITY
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+### What the tests cover
+
+The 50 tests in `tests/test_pawpal.py` exercise the scheduling logic in `pawpal_system.py` (plus `format_schedule` in `main.py`). Each area has happy-path and edge-case tests:
+
+- **Sorting correctness:** `sort_by_time` returns tasks in chronological order (unscheduled tasks last, midnight first, stable for equal times). `sort_tasks` orders by priority, then fixed time, then duration. Neither sort changes its input, and both handle an empty list. `generate_plan` output is always in chronological order.
+- **Recurrence logic:** completing a daily task creates a new task for the next day, and a weekly task creates one 7 days later. Edge cases: one-off tasks spawn nothing, double-completion doesn't duplicate or overwrite the completion date, chains of completions, month/year rollover, late completion, tasks with no pet, and unknown recurrence values.
+- **Conflict detection:** tasks at the exact same time are flagged, for the same pet and across pets. Edge cases: back-to-back tasks are not conflicts, a one-minute overlap is, containment and three-way overlaps give the right number of warnings, and tasks running past midnight don't crash.
+- **Planning and filtering:** the daily time budget (an over-budget task is skipped, shorter ones still fit), floating tasks placed around fixed ones, filtering by completion status and pet name (case and whitespace insensitive), and empty cases such as a pet with no tasks or an owner with no pets.
+
+### Sample test output
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\Arushi\Downloads\ai110-module2show-pawpal-starter
+collected 50 items
+
+tests\test_pawpal.py ..................................................  [100%]
+
+============================= 50 passed in 0.07s ==============================
 ```
+
+### Confidence Level: ⭐⭐⭐⭐ (4 out of 5)
+
+All 50 tests pass, and writing them found and fixed two real bugs (a crash for tasks ending at midnight, and an overwritten completion date). I'm confident in sorting, recurrence and conflict detection. I stopped at 4 stars because some areas are still untested: the Streamlit UI in `app.py`, input validation (zero or negative durations), fixed-time tasks outside the 08:00-21:00 day window, and the fact that recurrence is counted from the completion date rather than the original due date.
 
 ## 📐 Smarter Scheduling
 

@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from pawpal_system import Owner, Pet, Priority, ScheduledItem, Scheduler, Task, _to_time
+from pawpal_system import Owner, Pet, Priority, ScheduledItem, Scheduler, Task
 from typing import List
 
 
@@ -14,11 +14,12 @@ def format_schedule(owner: Owner, scheduler: Scheduler, plan: List[ScheduledItem
 
     rows = []
     for item in plan:
-        end = _to_time(item.end_minutes)
+        # Plain arithmetic, not time(), so a task ending at or past midnight can't raise.
+        end_min = item.end_minutes
         pet = item.task.pet.name if item.task.pet else "?"
         fixed = "*" if item.task.scheduled_time is not None else ""
         rows.append((
-            f"{item.start_time:%H:%M}-{end:%H:%M}",
+            f"{item.start_time:%H:%M}-{end_min // 60:02d}:{end_min % 60:02d}",
             pet,
             item.task.title,
             item.task.priority.name,

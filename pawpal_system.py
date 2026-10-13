@@ -53,9 +53,11 @@ class Task:
         already_done = self.completed
         done_on = on_date or date.today()
         self.completed = True
+        if already_done:
+            return None
         self.last_completed = done_on
 
-        if self.recurrence is None or already_done:
+        if self.recurrence is None:
             return None
         next_task = replace(
             self,
