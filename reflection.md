@@ -32,10 +32,14 @@ Yes, my design changed during implementation. I added a Pet attribute to Tasks, 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+My scheduler considers the daily time budget, priority, fixed times, day window, task due date, duration, and overlaps. The time constraint was the most important because the tasks must fit within the allotted time slot for the PawPal+ system to work. Fixed times for certain tasks also stayed because they cannot be moved, such as feeding. Additionally, some tasks have a higher priority than others, which was considered in scheduling the order of these tasks for the pets. If a task needs to be cut due to time constraints, the lowest priority items will leave rather than important items such as medication.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+One tradeoff my scheduler makes is not taking into account the owner's preference for scheduling tasks. This tradeoff is reasonable for the PawPal+ scenario because tasks that have a time constraint, fixed time for completion, or high priority should be completed before tasks that are not as rigid or prioritized, so the preference would not make too much of a difference for this small-scale system.
 
 ---
 
