@@ -1,0 +1,89 @@
+classDiagram
+    class Priority {
+        <<enumeration>>
+        LOW = 1
+        MEDIUM = 2
+        HIGH = 3
+    }
+
+    class Owner {
+        +str name
+        +int available_minutes_per_day
+        +Dict preferences
+        +List~Pet~ pets
+        +add_pet(pet) void
+        +remove_pet(pet) void
+        +get_all_tasks() List~Task~
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +int age
+        +str special_needs
+        +List~Task~ tasks
+        +add_task(task) void
+        +remove_task(task) void
+        +get_pending_tasks() List~Task~
+    }
+
+    class Task {
+        +str title
+        +str category
+        +int duration_minutes
+        +Priority priority
+        +time scheduled_time
+        +str recurrence
+        +bool completed
+        +date last_completed
+        +date due_date
+        +Pet pet
+        +mark_complete(on_date) Task
+        +is_due(on_date) bool
+    }
+
+    class ScheduledItem {
+        +Task task
+        +time start_time
+        +str reason
+        +start_minutes int
+        +end_minutes int
+        +overlaps(other) bool
+    }
+
+    class Scheduler {
+        +Owner owner
+        +List~Task~ skipped
+        +generate_plan(on_date) List~ScheduledItem~
+        +sort_tasks(tasks) List~Task~
+        +sort_by_time(tasks) List~Task~
+        +filter_tasks(tasks, completed, pet_name) List~Task~
+        +filter_by_time(tasks) List~Task~
+        +detect_conflicts(plan) List~ScheduledItem~
+        +conflict_warnings(plan) List~str~
+        +warn_for_task(task, on_date) List~str~
+        +explain_plan(plan, show_conflicts) str
+        -_reason(task, detail) str$
+        -_describe_conflict(a, b) str$
+        -_find_gap(busy, duration, day_start, day_end) int$
+    }
+
+    class Constants {
+        <<module constants>>
+        DAY_START = 08:00
+        DAY_END = 21:00
+        RECURRENCE_DAYS = daily 1, weekly 7
+    }
+
+    Owner "1" o-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : has
+    Task "0..*" --> "0..1" Pet : belongs to (back-reference)
+    Task --> Priority : priority
+    Task ..> Task : mark_complete spawns next occurrence
+    Task ..> Constants : RECURRENCE_DAYS
+    ScheduledItem --> Task : wraps
+    Scheduler --> Owner : plans for (reads tasks and time budget)
+    Scheduler ..> Task : sorts / filters / warns
+    Scheduler ..> ScheduledItem : produces and consumes
+    Scheduler ..> Constants : DAY_START, DAY_END

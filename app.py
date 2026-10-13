@@ -8,6 +8,20 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
 
+
+def show_conflicts(warnings):
+    """Show all conflicts in one warning: what clashes, then how to fix it."""
+    count = len(warnings)
+    lines = "\n".join(f"- {w.removeprefix('Warning: ')}" for w in warnings)
+    st.warning(
+        f"**{count} scheduling conflict{'s' if count != 1 else ''} found**\n\n"
+        f"{lines}\n\n"
+        "**To fix:** move one of the tasks to a different start time, or make it "
+        "flexible so PawPal+ can place it in a free slot. Tasks for different pets "
+        "can overlap if you can care for both at once.",
+        icon="⚠️",
+    )
+
 st.markdown(
     """
 Welcome to the PawPal+ starter app.
@@ -92,8 +106,11 @@ if owner.pets and st.button("Add task"):
     )
     pet.add_task(new_task)
     # Warn about clashes with other fixed-time tasks; the task is still added.
-    for warning in Scheduler(owner).warn_for_task(new_task):
-        st.warning(warning)
+    clashes = Scheduler(owner).warn_for_task(new_task)
+    if clashes:
+        show_conflicts(clashes)
+    else:
+        st.success(f"Added '{new_task.title}' for {pet.name}.")
 
 all_tasks = owner.get_all_tasks()
 if all_tasks:
@@ -153,6 +170,35 @@ st.subheader("Build Schedule")
 if st.button("Generate schedule"):
     scheduler = Scheduler(owner)
     plan = scheduler.generate_plan(date.today())
-    for warning in scheduler.conflict_warnings(plan):
-        st.warning(warning)
-    st.text(scheduler.explain_plan(plan, show_conflicts=False))
+    warnings = scheduler.conflict_warnings(plan)
+
+    if not plan:
+        st.info("Nothing is due today, so there is nothing to schedule.")
+    else:
+        total = sum(i.task.duration_minutes for i in plan)
+        if warnings:
+            show_conflicts(warnings)
+        else:
+            st.success(
+                f"Schedule ready: {len(plan)} task(s), {total} of "
+                f"{owner.available_minutes_per_day} available minutes, no conflicts."
+            )
+        st.table(
+            [
+                {
+                    "time": f"{i.start_time:%H:%M}-{i.end_minutes // 60:02d}:{i.end_minutes % 60:02d}",
+                    "pet": i.task.pet.name if i.task.pet else "?",
+                    "task": i.task.title,
+                    "minutes": i.task.duration_minutes,
+                    "priority": i.task.priority.name.lower(),
+                    "why": i.reason,
+                }
+                for i in plan
+            ]
+        )
+    if scheduler.skipped:
+        st.warning(
+            "Not enough time today for: "
+            + ", ".join(f"{t.title} ({t.pet.name if t.pet else '?'})" for t in scheduler.skipped)
+            + ". Raise the daily minutes or lower another task's priority."
+        )
