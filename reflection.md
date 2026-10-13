@@ -11,10 +11,17 @@ Three core actions a user should be able to perform is adding their pet, schedul
 
 The main objects for the system are Owner, Pet, Task, and Scheduler. Owner has Pets. Owner can schedule Tasks for Pets. The Scheduler considers constraints provided by the Owner and plans Tasks based on their priority, with an explanation of why each task was chosen.
 
+Owner: Holds the owner's info (name, available time per day, preferences) and owns one or more pets.
+Pet: Holds basic pet info (name, species/breed, age, special needs) and has its own list of care tasks.
+Task: A single care activity (walk, feeding, meds, grooming) with a duration, priority, and optional time or recurrence.
+Scheduler: Takes the owner's constraints and the tasks, sorts and filters them by priority and time available, handles conflicts, and produces the daily plan with an explanation of why each task was chosen.
+
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+Yes, my design changed during implementation. I added a Pet attribute to Tasks, so that each Task could be mapped back to the Pet it is meant for, which is especially important when it is combined into a big list in Scheduler. I also included a Priority enum so that the priority values could be sorted by their meaning rather than their alphabetical order. Additionally, I added a ScheduledItem class to include characteristics of a task, such as when it happens and its priority level, to determine a reason for why it was chosen.
 
 ---
 
