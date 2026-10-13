@@ -39,7 +39,7 @@ My scheduler considers the daily time budget, priority, fixed times, day window,
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
-One tradeoff my scheduler makes is not taking into account the owner's preference for scheduling tasks. This tradeoff is reasonable for the PawPal+ scenario because tasks that have a time constraint, fixed time for completion, or high priority should be completed before tasks that are not as rigid or prioritized, so the preference would not make too much of a difference for this small-scale system.
+One tradeoff my scheduler makes is warning about overlapping fixed-time tasks but not fixing them. Fixed tasks stay exactly where the user set them, even when they collide, and the plan only prints a warning. This tradeoff is reasonable for this scenario because it respects the user's chosen times and keeps the logic simple, but the schedule can end up impossible to follow if the owner ignores the warnings. Only floating tasks are guaranteed not to overlap, because they're placed into free gaps.
 
 ---
 
